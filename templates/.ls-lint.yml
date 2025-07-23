@@ -1,0 +1,24 @@
+ls:
+  .dir: kebab-case
+  .js: kebab-case
+  .ts: kebab-case
+  .tsx: kebab-case
+  .d.ts: kebab-case
+  .json: kebab-case
+  .vue: kebab-case
+  .html: kebab-case
+  .css: kebab-case
+  .scss: kebab-case
+  .less: kebab-case
+  .png: snake_case
+  .jpg: snake_case
+  .jpeg: snake_case
+  .gif: snake_case
+  .svg: snake_case
+ignore:
+  - .git
+  - node_modules
+  - src/App.vue
+  - dist
+  - .husky
+  - .vscode

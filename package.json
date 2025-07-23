@@ -1,0 +1,66 @@
+{
+  "name": "@pgg/lint-installer",
+  "version": "1.0.1",
+  "description": "一键安装和配置代码质量工具链的CLI工具",
+  "author": "Your Name",
+  "license": "MIT",
+  "keywords": [
+    "eslint",
+    "commitlint",
+    "lint-staged",
+    "simple-git-hooks",
+    "ls-lint",
+    "czg",
+    "dev-tools",
+    "cli"
+  ],
+  "main": "dist/index.js",
+  "bin": {
+    "lint-installer": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build",
+    "lint:eslint": "eslint --fix",
+    "lint:ls": "ls-lint",
+    "lint": "git add . && npx lint-staged",
+    "commit": "git add . && czg && git pull && git push"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^8.2.6",
+    "ora": "^5.4.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "latest",
+    "@commitlint/cli": "latest",
+    "@commitlint/config-conventional": "latest",
+    "@ls-lint/ls-lint": "latest",
+    "@types/fs-extra": "^11.0.4",
+    "@types/inquirer": "^8.2.10",
+    "@types/node": "^20.10.0",
+    "czg": "latest",
+    "eslint": "latest",
+    "eslint-plugin-format": "latest",
+    "lint-staged": "latest",
+    "simple-git-hooks": "latest",
+    "typescript": "^5.3.0"
+  },
+  "simple-git-hooks": {
+    "commit-msg": "npx commitlint --config commitlint.config.cjs --edit",
+    "pre-commit": "npx lint-staged"
+  },
+  "lint-staged": {
+    "*": [
+      "ls-lint",
+      "eslint --fix"
+    ]
+  }
+}
