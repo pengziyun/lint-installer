@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "alova.alova-vscode-extension",
+    "uni-helper.uni-helper-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "antfu.unocss",
+    "vue.volar"
+  ]
+}

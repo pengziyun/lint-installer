@@ -94,6 +94,8 @@ const CONFIG_FILES_TO_CLEAN = [
   // 其他 lint 工具配置
   '.ls-lint.yml',
   '.ls-lint.yaml',
+  // VSCode 配置
+  '.vscode/',
 ]
 
 // 需要清理的依赖项列表
@@ -201,6 +203,9 @@ export async function installDevTools(targetDir: string): Promise<void> {
 
     // 清理已有配置
     await cleanExistingConfigs(targetDir)
+
+    // 更新 .gitignore 文件
+    await updateGitignore(targetDir)
 
     // 复制配置文件
     await copyConfigFiles(targetDir)
@@ -338,6 +343,15 @@ async function copyConfigFiles(targetDir: string): Promise<void> {
       }
     }
 
+    // 复制 VSCode 配置文件
+    const vscodeSourceDir = path.join(templatesDir, '.vscode')
+    const vscodeTargetDir = path.join(targetDir, '.vscode')
+
+    if (await fs.pathExists(vscodeSourceDir)) {
+      await fs.ensureDir(vscodeTargetDir)
+      await fs.copy(vscodeSourceDir, vscodeTargetDir)
+    }
+
     spinner.succeed('配置文件复制完成')
   }
   catch (error) {
@@ -396,6 +410,58 @@ async function installDependencies(targetDir: string, packageManager: 'npm' | 'y
   catch (error) {
     console.log(chalk.red('❌ 依赖安装失败'))
     throw error
+  }
+}
+
+async function updateGitignore(targetDir: string): Promise<void> {
+  const gitignorePath = path.join(targetDir, '.gitignore')
+
+  if (!await fs.pathExists(gitignorePath)) {
+    return
+  }
+
+  const spinner = ora('正在检查 .gitignore 文件...').start()
+
+  try {
+    const content = await fs.readFile(gitignorePath, 'utf-8')
+    const lines = content.split('\n')
+
+    // 检查是否包含 .vscode/ 相关规则（包括忽略和否定规则）
+    const vscodeIgnorePatterns = ['.vscode/', '.vscode', '.vscode/*']
+    const vscodeNegatePatterns = ['!.vscode/', '!.vscode', '!.vscode/*']
+    let hasVscodeIgnore = false
+    const modifiedLines = lines.filter((line) => {
+      const trimmedLine = line.trim()
+      // 检查普通忽略规则
+      if (vscodeIgnorePatterns.includes(trimmedLine)) {
+        hasVscodeIgnore = true
+        return false // 移除这一行
+      }
+      // 检查否定规则（以!开头的规则）
+      if (vscodeNegatePatterns.includes(trimmedLine)) {
+        hasVscodeIgnore = true
+        return false // 移除这一行
+      }
+      // 检查更复杂的否定规则，如 !.vscode/extensions.json
+      if (trimmedLine.startsWith('!.vscode/')) {
+        hasVscodeIgnore = true
+        return false // 移除这一行
+      }
+      return true
+    })
+
+    if (hasVscodeIgnore) {
+      // 写回修改后的内容
+      await fs.writeFile(gitignorePath, modifiedLines.join('\n'))
+      spinner.succeed('.gitignore 文件已更新，移除了 .vscode/ 忽略规则')
+    }
+    else {
+      spinner.succeed('.gitignore 文件检查完成，未发现 .vscode/ 忽略规则')
+    }
+  }
+  catch {
+    spinner.fail('.gitignore 文件处理失败')
+    console.warn(chalk.yellow('⚠️  .gitignore 文件处理失败，请手动检查并移除 .vscode/ 相关忽略规则'))
   }
 }
 
