@@ -1,6 +1,6 @@
 {
   "name": "@pgg/lint-installer",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "一键安装和配置代码质量工具链的CLI工具",
   "author": "Your Name",
   "license": "MIT",

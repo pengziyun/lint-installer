@@ -17,11 +17,12 @@ program
   .description('安装开发工具到当前项目')
   .argument('[directory]', '目标项目目录', process.cwd())
   .option('-d, --dir <directory>', '目标项目目录')
+  .option('-v, --version <strategy>', '版本策略: latest (最新版本) 或 stable (稳定版本)')
   .action(async (directory, options) => {
     try {
       console.log(chalk.blue('🚀 开始安装开发工具...'))
       const targetDir = options.dir || directory
-      await installDevTools(targetDir)
+      await installDevTools(targetDir, options.version)
       console.log(chalk.green('✅ 开发工具安装完成!'))
     }
     catch (error) {

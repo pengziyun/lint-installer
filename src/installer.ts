@@ -132,6 +132,40 @@ const SCRIPTS_TO_CLEAN = [
   'prepare', // husky 相关
 ]
 
+// 获取包的最新版本号
+async function getLatestVersion(packageName: string): Promise<string> {
+  try {
+    const result = execSync(`npm view ${packageName} version`, { encoding: 'utf-8' })
+    return `^${result.trim()}`
+  }
+  catch {
+    // 如果获取失败，返回降级版本
+    return FALLBACK_DEPENDENCIES[packageName as keyof typeof FALLBACK_DEPENDENCIES] || 'latest'
+  }
+}
+
+// 获取所有包的最新版本号
+async function getLatestVersions(): Promise<Record<string, string>> {
+  const spinner = ora('正在获取最新版本信息...').start()
+  const versions: Record<string, string> = {}
+
+  try {
+    const packageNames = Object.keys(DEV_DEPENDENCIES)
+
+    for (const packageName of packageNames) {
+      spinner.text = `正在获取 ${packageName} 的最新版本...`
+      versions[packageName] = await getLatestVersion(packageName)
+    }
+
+    spinner.succeed('版本信息获取完成')
+    return versions
+  }
+  catch {
+    spinner.fail('获取版本信息失败，将使用降级版本')
+    return FALLBACK_DEPENDENCIES
+  }
+}
+
 async function createPackageJson(targetDir: string): Promise<void> {
   const packageJsonPath = path.join(targetDir, 'package.json')
   const dirName = path.basename(targetDir)
@@ -161,7 +195,7 @@ async function createPackageJson(targetDir: string): Promise<void> {
   }
 }
 
-export async function installDevTools(targetDir: string): Promise<void> {
+export async function installDevTools(targetDir: string, versionStrategy?: string): Promise<void> {
   const packageJsonPath = path.join(targetDir, 'package.json')
 
   // 检查是否存在 package.json，不存在则创建
@@ -172,16 +206,54 @@ export async function installDevTools(targetDir: string): Promise<void> {
   // 首先检测包管理器（在修改任何文件之前）
   const packageManager = await detectPackageManager(targetDir)
 
+  // 确定版本策略
+  let selectedStrategy: string
+  if (versionStrategy && ['latest', 'stable'].includes(versionStrategy)) {
+    selectedStrategy = versionStrategy
+    console.log(chalk.blue(`📦 使用命令行指定的版本策略: ${versionStrategy === 'latest' ? '最新版本' : '稳定版本'}`))
+  }
+  else {
+    // 询问用户选择版本策略
+    const { strategy } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'strategy',
+        message: '请选择依赖版本策略:',
+        choices: [
+          {
+            name: '🚀 最新版本 (获取每个包的最新版本)',
+            value: 'latest',
+          },
+          {
+            name: '🛡️  稳定版本 (使用预设的稳定版本)',
+            value: 'stable',
+          },
+        ],
+      },
+    ])
+    selectedStrategy = strategy
+  }
+
+  // 根据选择获取依赖版本
+  let dependenciesToUse: Record<string, string>
+  if (selectedStrategy === 'latest') {
+    dependenciesToUse = await getLatestVersions()
+  }
+  else {
+    dependenciesToUse = FALLBACK_DEPENDENCIES
+    console.log(chalk.blue('📦 使用预设的稳定版本'))
+  }
+
   const spinner = ora('正在更新 package.json...').start()
 
   try {
     // 读取并更新 package.json
     const packageJson: PackageJson = await fs.readJson(packageJsonPath)
 
-    // 添加 devDependencies
+    // 添加 devDependencies（使用用户选择的版本）
     packageJson.devDependencies = {
       ...packageJson.devDependencies,
-      ...DEV_DEPENDENCIES,
+      ...dependenciesToUse,
     }
 
     // 添加 scripts
@@ -361,7 +433,6 @@ async function copyConfigFiles(targetDir: string): Promise<void> {
 }
 
 async function installDependencies(targetDir: string, packageManager: 'npm' | 'yarn' | 'pnpm'): Promise<void> {
-  const spinner = ora('正在安装最新版本依赖...').start()
   const packageJsonPath = path.join(targetDir, 'package.json')
 
   try {
@@ -371,21 +442,19 @@ async function installDependencies(targetDir: string, packageManager: 'npm' | 'y
         ? 'yarn install'
         : 'npm install'
 
-    try {
-      // 停止 spinner 以显示安装进度
-      spinner.stop()
-      console.log(chalk.blue(`📦 正在安装最新版本依赖 (使用 ${packageManager})...`))
+    console.log(chalk.blue(`📦 正在安装依赖 (使用 ${packageManager})...`))
 
-      // 首先尝试安装最新版本，显示实时进度
+    try {
+      // 安装依赖，显示实时进度
       execSync(installCommand, {
         cwd: targetDir,
         stdio: 'inherit',
       })
 
-      console.log(chalk.green(`✅ 依赖安装完成 (使用 ${packageManager} - 最新版本)`))
+      console.log(chalk.green(`✅ 依赖安装完成 (使用 ${packageManager})`))
     }
     catch {
-      console.log(chalk.yellow('⚠️  最新版本安装失败，正在使用稳定版本...'))
+      console.log(chalk.yellow('⚠️  安装失败，正在使用稳定版本重试...'))
 
       // 读取并更新 package.json 为降级版本
       const packageJson = await fs.readJson(packageJsonPath)
