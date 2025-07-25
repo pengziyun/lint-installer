@@ -124,7 +124,6 @@ const DEPENDENCIES_TO_CLEAN = [
 
 // 需要清理的脚本列表
 const SCRIPTS_TO_CLEAN = [
-  'lint:eslint',
   'lint:prettier',
   'lint:fix',
   'format',
@@ -362,8 +361,8 @@ async function cleanExistingConfigs(targetDir: string): Promise<void> {
         }
       }
 
-      // 清理可能存在的旧配置
-      const configsToRemove = ['husky', 'lint-staged', 'simple-git-hooks']
+      // 清理可能存在的旧配置（只清理husky，保留lint-staged和simple-git-hooks）
+      const configsToRemove = ['husky']
       for (const config of configsToRemove) {
         if (packageJson[config]) {
           delete packageJson[config]
